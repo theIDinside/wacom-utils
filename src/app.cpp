@@ -6,6 +6,9 @@
 #include <charconv>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib> // for getenv
+
+#include <format>
 #include <mutex>
 #include <string>
 
@@ -31,7 +34,7 @@ void X11Connection::ungrabPointer() const noexcept {
 
 ApplicationCliArgs::operator std::span<const std::string_view>()
     const noexcept {
-  return std::span<const std::string_view>{cli_args.data(), cli_args.size()};
+  return std::span<const std::string_view>{cliArgs.data(), cliArgs.size()};
 }
 
 static ApplicationCliArgs createArgs(int argc, const char **argv) noexcept {
@@ -78,9 +81,9 @@ std::optional<WacomDevice> ApplicationState::selectDevice() const noexcept {
   const auto devices = WacomDeviceManager::getDeviceManager()->getDevices();
   for (const auto &device : devices) {
     if (idx == 0) {
-      std::cout << "[" << idx++ << "]*: " << device.device_name << std::endl;
+      std::cout << "[" << idx++ << "]*: " << device.deviceName << std::endl;
     } else {
-      std::cout << "[" << idx++ << "]: " << device.device_name << std::endl;
+      std::cout << "[" << idx++ << "]: " << device.deviceName << std::endl;
     }
   }
   std::cout << "* is the default choice (just press enter):\nChoice: ";
@@ -126,11 +129,9 @@ bool ApplicationState::configureWacomMapping(const WacomConfig &cfg,
   const auto [width, height] = selection.dimensions;
   const auto [x, y] = selection.origin;
 
-  char buf[128];
-  const auto len = snprintf(buf, 128, "%dx%d+%d+%d", width, height, x, y);
-  std::string param{buf, static_cast<size_t>(len)};
-  const auto args =
-      std::vector<std::string>{{"set", cfg.device_name, "maptooutput", param}};
+  const auto args = std::vector<std::string>{
+      {"set", cfg.deviceName, "maptooutput",
+       wu::format("{}x{}+{}+{}", width, height, x, y)}};
   auto exec = ExecResult::exec("/usr/bin/xsetwacom", args);
 
   if (exec->succcess()) {
@@ -142,6 +143,28 @@ bool ApplicationState::configureWacomMapping(const WacomConfig &cfg,
               << "+" << x << "+" << y << std::endl;
     return false;
   }
+}
+
+/*static*/
+std::expected<fs::path, const char *>
+ApplicationState::verifyHasXSetWacom() noexcept {
+  const auto pathEnv = std::getenv("PATH");
+  if (pathEnv == nullptr) {
+    std::cerr << "PATH environment variable not found." << std::endl;
+    return std::unexpected{"Could not determine if $PATH environment variable "
+                           "existed. Can't resolve xsetwacom because of it."};
+  }
+
+  const auto paths = wu::split_string(pathEnv, ':');
+
+  fs::path path = "/";
+  for (const auto &p : paths) {
+    path = fs::path{p} / "xsetwacom";
+    if (fs::exists(path)) {
+      return path;
+    }
+  }
+  return std::unexpected{"Could not find xsetwacom on $PATH"};
 }
 
 /*static*/ void ApplicationState::Initialize(int argc,

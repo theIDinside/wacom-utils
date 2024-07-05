@@ -73,7 +73,7 @@ parse_config(std::span<const std::string_view> args) noexcept {
   }
 
   if (args.size() == 1) {
-    return WacomConfig{.device_name = std::string{args.front()}};
+    return WacomConfig{.deviceName = std::string{args.front()}};
   }
   const auto len = wu::accumulate(
       args, [](auto acc, const auto &e) { return acc + e.size(); });
@@ -85,7 +85,7 @@ parse_config(std::span<const std::string_view> args) noexcept {
   }
 
   if (WacomDeviceManager::getDeviceManager()->hasDevice(device_name)) {
-    return WacomConfig{.device_name = std::move(device_name)};
+    return WacomConfig{.deviceName = std::move(device_name)};
   } else {
     return {};
   }
@@ -97,7 +97,7 @@ CommandResult perform_command(const WacomCommand &command) noexcept {
         std::vector<std::string> args{};
         args.reserve(4);
         args.push_back("set");
-        args.push_back(cmd.config.device_name);
+        args.push_back(cmd.config.deviceName);
         args.push_back("maptooutput");
         const auto [dimension, origin] = cmd.sel;
         std::stringstream ss{};

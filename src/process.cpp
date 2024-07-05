@@ -1,18 +1,17 @@
 #include "process.h"
 #include "util.h"
 #include <cstdlib>
-#include <stop_token>
 #include <sys/wait.h>
 #include <thread>
 
 ExecResult::~ExecResult() noexcept {
-  if (process_stdout != -1) {
-    close(process_stdout);
+  if (procStdout != -1) {
+    close(procStdout);
   }
 }
 
 ExecResult::ExecResult(int out, ExitCode code) noexcept
-    : process_stdout(out), code(code) {}
+    : procStdout(out), code(code) {}
 
 static void execute(std::string cmd, const char **argv) noexcept {
   if (execv(cmd.data(),
@@ -23,7 +22,7 @@ static void execute(std::string cmd, const char **argv) noexcept {
 
 bool ExecResult::succcess() const noexcept { return code.code == 0; }
 
-int ExecResult::std_out() const noexcept { return process_stdout; }
+int ExecResult::std_out() const noexcept { return procStdout; }
 
 /*static*/
 std::unique_ptr<ExecResult>

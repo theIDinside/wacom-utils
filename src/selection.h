@@ -1,6 +1,6 @@
 #pragma once
-#include <optional>
 #include <iostream>
+#include <optional>
 
 struct Vec2 {
   int x, y;
@@ -12,12 +12,12 @@ struct Selection {
 };
 
 struct ActiveSelection {
-  std::optional<Vec2> click_pos{};
-  Vec2 current_pos{};
-  std::optional<Vec2> release_pos{};
+  std::optional<Vec2> clickPos{};
+  Vec2 currentPos{};
+  std::optional<Vec2> releasePos{};
 
   auto constexpr selecting() const noexcept -> bool {
-    return click_pos.has_value() && !release_pos.has_value();
+    return clickPos.has_value() && !releasePos.has_value();
   }
 
   auto on_click(int x, int y) noexcept -> void;

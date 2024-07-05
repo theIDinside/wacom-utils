@@ -11,7 +11,7 @@ struct ExitCode {
 };
 
 class ExecResult {
-  int process_stdout;
+  int procStdout;
   ExitCode code;
 
 public:

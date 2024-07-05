@@ -6,12 +6,12 @@
 #include <vector>
 
 struct WacomDevice {
-  std::string device_name;
+  std::string deviceName;
   std::string id;
 };
 
 struct WacomConfig {
-  std::string device_name;
+  std::string deviceName;
 };
 
 class WacomDeviceManager {

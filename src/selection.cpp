@@ -1,16 +1,16 @@
 #include "selection.h"
 
 void ActiveSelection::on_click(int x, int y) noexcept {
-  click_pos = Vec2{.x = x, .y = y};
+  clickPos = Vec2{.x = x, .y = y};
   on_move(x, y);
 }
 
 void ActiveSelection::on_move(int x, int y) noexcept {
-  current_pos = Vec2{x, y};
+  currentPos = Vec2{x, y};
 }
 
 void ActiveSelection::on_release(int x, int y) noexcept {
-  release_pos = Vec2{.x = x, .y = y};
+  releasePos = Vec2{.x = x, .y = y};
 }
 
 Selection ActiveSelection::selection() const noexcept {
@@ -18,23 +18,23 @@ Selection ActiveSelection::selection() const noexcept {
 }
 
 Selection ActiveSelection::current_selection() const noexcept {
-  const auto [start_x, start_y] = click_pos.value();
-  const auto [end_x, end_y] = current_pos;
+  const auto [start_x, start_y] = clickPos.value();
+  const auto [end_x, end_y] = currentPos;
   int width = abs(end_x - start_x);
   int height = abs(end_y - start_y);
   const auto dimensions = Vec2{.x = width, .y = height};
   const auto origin =
       Vec2{.x = std::min(start_x, end_x), .y = std::min(start_y, end_y)};
-  return Selection {dimensions, origin};
+  return Selection{dimensions, origin};
 }
 
 Vec2 ActiveSelection::dimensions() const noexcept {
-  if (!click_pos || !release_pos) {
+  if (!clickPos || !releasePos) {
     std::cerr << "[FATAL]: Begin or end positions not set." << std::endl;
     exit(1);
   }
-  const auto [start_x, start_y] = click_pos.value();
-  const auto [end_x, end_y] = release_pos.value();
+  const auto [start_x, start_y] = clickPos.value();
+  const auto [end_x, end_y] = releasePos.value();
   int width = abs(end_x - start_x);
   int height = abs(end_y - start_y);
 
@@ -42,11 +42,11 @@ Vec2 ActiveSelection::dimensions() const noexcept {
 }
 
 Vec2 ActiveSelection::origin() const noexcept {
-  if (!click_pos || !release_pos) {
+  if (!clickPos || !releasePos) {
     std::cerr << "[FATAL]: Begin or end positions not set." << std::endl;
     exit(1);
   }
-  const auto [start_x, start_y] = click_pos.value();
-  const auto [end_x, end_y] = release_pos.value();
+  const auto [start_x, start_y] = clickPos.value();
+  const auto [end_x, end_y] = releasePos.value();
   return Vec2{.x = std::min(start_x, end_x), .y = std::min(start_y, end_y)};
 }

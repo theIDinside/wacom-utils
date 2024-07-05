@@ -2,14 +2,15 @@
 #include "process.h"
 #include "util.h"
 #include "wacom.h"
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <cstring>
+#include <expected>
+#include <format>
 #include <iostream>
-#include <mutex>
 
 int main(int argc, const char **argv) {
   ApplicationState::Initialize(argc, argv);
+  if (!ApplicationState::verifyHasXSetWacom()) {
+    std::cerr << "could not find xsetwacom on $PATH" << std::endl;
+  }
   auto &app = ApplicationState::getAppInstance();
 
   auto config = parse_config(app.args());
@@ -22,7 +23,7 @@ int main(int argc, const char **argv) {
       std::cout << " you picked an invalid option\n";
     }
     const auto select = app.selectScreenArea();
-    app.configureWacomMapping(WacomConfig{.device_name = std::move(config->id)},
+    app.configureWacomMapping(WacomConfig{.deviceName = std::move(config->id)},
                               select);
   }
   return 0;
