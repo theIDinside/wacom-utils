@@ -129,9 +129,9 @@ bool ApplicationState::configureWacomMapping(const WacomConfig &cfg,
   const auto [width, height] = selection.dimensions;
   const auto [x, y] = selection.origin;
 
-  const auto args = std::vector<std::string>{
-      {"set", cfg.deviceName, "maptooutput",
-       wu::format("{}x{}+{}+{}", width, height, x, y)}};
+  const auto args =
+      std::vector<std::string>{{"set", cfg.deviceName, "maptooutput",
+                                wu_format("{}x{}+{}+{}", width, height, x, y)}};
   auto exec = ExecResult::exec("/usr/bin/xsetwacom", args);
 
   if (exec->succcess()) {

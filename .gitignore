@@ -1,2 +1,7 @@
 compile_commands.json
 *build*/**
+
+
+# Added by cargo
+
+/target

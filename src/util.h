@@ -9,18 +9,10 @@
 #include <type_traits>
 #include <vector>
 
-consteval bool IsGCC() noexcept {
 #if defined(__GNUC__) && !defined(__clang__)
-  return true;
-#else
-  return false;
-#endif
-}
-
-#if defined(__GNUC__)
 #include <format>
 #elif defined(__clang__)
-#message                                                                       \
+#warning                                                                       \
     "clang doesn't support std::format yet. Because we can't have nice things. It's impossible."
 #endif
 
@@ -72,14 +64,6 @@ split_string(std::string_view str, DelimiterType delim) noexcept {
   return result;
 }
 
-consteval std::size_t strlen_constexpr(const char *str) {
-  std::size_t length = 0;
-  while (str[length] != '\0') {
-    ++length;
-  }
-  return length;
-}
-
 // Template to count '{' characters in a string at compile time
 template <const char *str, std::size_t N, std::size_t idx = 0>
 struct InterpolationPartsCounter {
@@ -93,29 +77,75 @@ struct InterpolationPartsCounter<str, N, N> {
   static constexpr int value = 0;
 };
 
-template <size_t N> struct CompileTimeString {
-  char data[N];
+template <typename T> struct TypeFmtMapper {};
+
+template <> struct TypeFmtMapper<int> {
+  static constexpr const char Fmt[] = "d";
+  static constexpr size_t N = sizeof(Fmt);
+};
+
+template <size_t N> struct FormatString {
+  std::array<char, N> data{};
   static constexpr auto Size = N;
 
-  constexpr CompileTimeString(const char (&str)[N]) {
+  template <size_t M, typename... Ts>
+  constexpr FormatString(const char (&str)[M], Ts...) {
+    for (size_t i = 0; i < M; ++i) {
+      if (str[i] == '{') {
+        data[i] = '%';
+        data[i + 1] = 'd';
+        i++;
+      } else {
+        data[i] = str[i];
+      }
+    }
+  }
+
+  constexpr FormatString(const char (&str)[N]) {
     for (size_t i = 0; i < N; ++i) {
-      data[i] = str[i];
+      if (str[i] == '{') {
+        data[i] = '%';
+        data[i + 1] = 'd';
+        i++;
+      } else {
+        data[i] = str[i];
+      }
+    }
+  }
+
+  constexpr FormatString(const std::array<char, N> &str) {
+    for (size_t i = 0; i < N; ++i) {
+      if (str[i] == '{') {
+        data[i] = '%';
+        data[i + 1] = 'd';
+        i++;
+      } else {
+        data[i] = str[i];
+      }
     }
   }
 
   constexpr std::string_view view() const {
-    return std::string_view(data, N - 1); // Exclude the null terminator
+    return std::string_view(data.data(), N - 1); // Exclude the null terminator
   }
 };
 
-// Helper function to create CompileTimeString
-template <size_t N>
-constexpr CompileTimeString<N> makeCompileTimeString(const char (&str)[N]) {
-  return CompileTimeString<N>(str);
+template <size_t N> constexpr auto makeFormatString(const char (&str)[N]) {
+  return FormatString<N>(str);
+}
+
+template <size_t N, typename... Ts>
+constexpr auto makeFormatString(const char (&str)[N], Ts...) {
+  return FormatString<N>(str);
 }
 
 template <size_t N>
-consteval size_t count_parameters(const CompileTimeString<N> &string) noexcept {
+constexpr auto makeFormatString(const std::array<char, N> &str) {
+  return FormatString<N>(str);
+}
+
+template <size_t N>
+consteval size_t count_parameters(const FormatString<N> &string) noexcept {
   auto count = 0;
   for (const auto c : string.data) {
     if (c == '%')
@@ -124,31 +154,30 @@ consteval size_t count_parameters(const CompileTimeString<N> &string) noexcept {
   return count;
 }
 
-template <size_t N, typename... Ts>
-consteval std::string format(const CompileTimeString<N> &str,
-                             Ts... ts) noexcept {
-#if defined(__GNUC__) && !defined(__clang__)
-  return std::format(str.data, ts...);
-#elif defined(__clang__)
-  static_assert(count_parameters(str) == sizeof...(ts),
-                "Wrong number of parameters passed to snprintf");
-  std::string buf{};
-  const auto len = snprintf(nullptr, 4096 * 8, str.data, ts...);
-  buf.resize(len + 1, 0);
-  snprintf(buf.data(), len, str.data, ts...);
-  return buf;
-#endif
+template <typename... Ts> consteval auto count_ts(const Ts &...) noexcept {
+  return sizeof...(Ts);
 }
 
-template <size_t N, typename... Ts>
-consteval std::string format(const char (&str)[N], Ts... ts) noexcept {
 #if defined(__GNUC__) && !defined(__clang__)
-  return std::format(str.data, ts...);
+#define wu_format(FmtString, ...)
+std::format(FmtString, __VA_ARGS__)
 #elif defined(__clang__)
-  constexpr std::array<char, N> arr = std::to_array<const char, N>(str);
-  constexpr auto fmt = CompileTimeString<N>{str};
-  return format(fmt, ts...);
+#define wu_format(FmtString, ...)                                              \
+  [&]() {                                                                      \
+    constexpr auto ts = wu::count_ts(__VA_ARGS__);                             \
+    constexpr auto compileTimeString = wu::makeFormatString(FmtString);        \
+    static_assert(wu::count_parameters(compileTimeString) == ts,               \
+                  "Wrong number of parameters passed to snprintf");            \
+    std::string buf{};                                                         \
+    std::cout << "FmtString='" << FmtString << "' turned into '"               \
+              << compileTimeString.data.data() << "'" << std::endl;            \
+    const auto len =                                                           \
+        snprintf(nullptr, 0, compileTimeString.data.data(), __VA_ARGS__);      \
+    buf.resize(len + 1, 0);                                                    \
+    snprintf(buf.data(), len + 1, compileTimeString.data.data(), __VA_ARGS__); \
+    std::cout << "formatted: '" << buf << "'" << std::endl;                    \
+    return buf;                                                                \
+  }()
 #endif
-}
 
 } // namespace wu
